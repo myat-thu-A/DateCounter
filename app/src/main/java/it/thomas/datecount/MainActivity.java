@@ -31,6 +31,7 @@ public class MainActivity extends AppCompatActivity {
     private LocalDate selectedDate;
     LocalDate todayDate = LocalDate.now();
     private SharedPreferences sp;
+    private static final String SELECTED_DATE = "selected_date";
 
 
 
@@ -39,30 +40,13 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+        sp = getSharedPreferences("date_count", MODE_PRIVATE);
         initUI();
         initListeners();
-        initSharedpreferences();
     }
 
-    private void initSharedpreferences() {
-        sp = getSharedPreferences("date_count", MODE_PRIVATE);
-    }
 
     private void initListeners() {
-        binding.btDate.setOnClickListener(v -> {
-            AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            AlertDialog dialog = builder
-                    .setTitle("Anniversary")
-                    .setMessage("Anniversary Dialog")
-                    .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            dialog.cancel();
-                        }
-                    }).create();
-            dialog.show();
-
-        });
 
         binding.tvMale.setOnClickListener(v -> {
             showInputDialog(v);
@@ -71,6 +55,31 @@ public class MainActivity extends AppCompatActivity {
         binding.tvFemale.setOnClickListener(v -> {
             showInputDialog(v);
         });
+
+        binding.btDate.setOnClickListener(v -> {
+            showDatePickerDialog();
+        });
+    }
+
+    private void showDatePickerDialog() {
+        DatePickerDialog datePickerDialog = new DatePickerDialog(this);
+        datePickerDialog.updateDate(selectedDate.getYear(), selectedDate.getMonthValue()-1, selectedDate.getDayOfMonth());
+        datePickerDialog.setOnDateSetListener((view, year, month, dayOfMonth) -> {
+            Log.d("Date Picker", String.format("%d %d %d", year, month, dayOfMonth));
+            selectedDate = LocalDate.of(year, month+1, dayOfMonth);
+            Log.d("ABC", String.format("%02d/%02d/%04d", dayOfMonth, month+1, year));
+            saveData(SELECTED_DATE, String.format("%02d/%02d/%04d", dayOfMonth, month+1, year));
+            updateDate();
+        });
+        datePickerDialog.show();
+    }
+
+    private void updateDate() {
+        LocalDate todayDate = LocalDate.now();
+        long dateBetween = todayDate.toEpochDay() - selectedDate.toEpochDay();
+        String days = dateBetween > 1 ? dateBetween + "Days" : dateBetween + "Day";
+        binding.tvCount.setText(days);
+        binding.btDate.setText(fromLocalDateToString(selectedDate));
     }
 
     private void showInputDialog(View view) {
@@ -85,6 +94,11 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 String name = inputBinding.etName.getText().toString();
+                if(textView.getId() == R.id.tvMale) {
+                    saveData(MALE, name);
+                } else {
+                    saveData(FEMALE, name);
+                }
                 textView.setText(name);
                 inputDialog.cancel();
             }
@@ -118,7 +132,7 @@ public class MainActivity extends AppCompatActivity {
     private void saveData(String key, String value) {
         SharedPreferences.Editor editor = sp.edit();
         editor.putString(key, value);
-        editor.commit();
+        editor.apply();
     }
 
     private String read(String key) {
